@@ -1,0 +1,312 @@
+---
+title: "EXAMEN TERMINAL SEPTEMBRE 2024 - PROF MONSAN"
+subtitle: "UFHB UFR MI - DATASCIENCE"
+author:
+- name: CHERIF Mohamed Lamine
+- name : GOULIA Junias
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+  html_document:
+    css: style.css
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+      position: left
+    theme: spacelab
+    highlight: zenburn
+    number_sections: true
+    df_print: kable
+fontsize: 12pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{css toc-content, echo = FALSE}
+/* Style pour le document */
+body {
+  font-family: "News Cycle", "Arial Narrow Bold";
+  color: #333;
+  background-color: #f5f5f5;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "News Cycle", "Arial Narrow Bold", sans-serif;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 3vw;
+}
+
+h2 {
+  font-size: 2.5vw;
+}
+
+
+p {
+  margin-bottom: 10px;
+  font-size: 2vw;
+}
+
+a {
+  color: #2980b9;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code {
+  background-color: #f9f2f4;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 90%;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+table, th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+th {
+  background-color: #2c3e50;
+  color: white;
+  text-align: left;
+}
+
+td {
+  text-align: left;
+}
+
+thead {
+  background-color: #34495e;
+  color: white;
+}
+
+tfoot {
+  background-color: #ecf0f1;
+  color: #333;
+}
+
+pre {
+  max-height: 400px;  /* Limite la hauteur du bloc de code */
+  overflow-y: auto;   /* Permet le défilement interne */
+}
+
+.slidy-slide {
+  min-height: 90vh;  /* 90% de la hauteur de la fenêtre */
+  padding: 20px;
+  box-sizing: border-box;
+  max-height: 100vh;  /* Limite la hauteur maximale à la hauteur de la fenêtre */
+  overflow: hidden;   /* Empêche le scroll sur la diapositive */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+img, .figure {
+  max-width: 90%;
+  height: auto;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+```
+
+
+
+# Exercice 0: rappels
+
+La classification non supervisée regroupe des méthodes qui visent à regrouper des individus en groupes homogènes sans utiliser d’étiquettes prédéfinies.
+
+## 1. **K-means**
+   - **Principe** : Regroupe les individus en k clusters en minimisant la distance intra-cluster.
+   - **Avantages** :
+     - Simple à comprendre et rapide à calculer pour des grands ensembles de données.
+     - Particulièrement efficace pour des groupes sphériques.
+   - **Inconvénients** :
+     - Il faut choisir un nombre de clusters k à l'avance, ce qui n'est pas toujours évident.
+     - Sensible aux valeurs aberrantes et à la forme des clusters (ne fonctionne pas bien pour des clusters de formes complexes).
+
+## 2. **Clustering hiérarchique (CAH - Classification Ascendante Hiérarchique)**
+   - **Principe** : Crée une hiérarchie de groupes en fusionnant progressivement des individus ou des groupes d’individus selon une certaine distance.
+   - **Avantages** :
+     - Ne nécessite pas de définir le nombre de clusters à l'avance.
+     - Produit une dendrogramme qui permet d'explorer les niveaux de regroupements possibles.
+   - **Inconvénients** :
+     - Peut être computationalement coûteux pour de grandes bases de données.
+     - Choix arbitraire du seuil de coupure pour déterminer les clusters finaux.
+
+## 3. **DBSCAN (Density-Based Spatial Clustering of Applications with Noise)**
+   - **Principe** : Regroupe les points denses, en fonction de la densité des individus dans une zone, et identifie les points isolés comme des outliers.
+   - **Avantages** :
+     - Capable d’identifier des clusters de formes irrégulières.
+     - Insensible aux outliers et ne nécessite pas de spécifier le nombre de clusters.
+   - **Inconvénients** :
+     - Le choix des paramètres de densité (ε et MinPts) est délicat.
+     - Moins performant lorsque les densités de clusters varient beaucoup.
+
+# Exercice 2 : cas pratique
+## Contexte
+Le radiologue a réalisé une IRM et a obtenu 108 variables sur une région d'intérêt (ROI). Il cherche à comprendre comment exploiter ces données pour mieux regrouper les patients ou extraire des informations pertinentes sur les variables elles-mêmes.
+
+## Problématique
+Comment peut-on regrouper les patients en fonction des 108 variables issues de l'IRM ? Peut-on aussi classer les variables elles-mêmes pour en tirer des conclusions utiles ?
+
+## Objectif et intérêt
+Notre objectif est de proposer une méthode de classification des patients (clustering) en groupes homogènes, tout en explorant la structure des variables pour détecter d'éventuelles corrélations ou regroupements significatifs entre elles.
+
+## Méthodologie
+On va aborder la solution en plusieurs étapes :
+
+1. **Analyse exploratoire** pour comprendre les données.
+2. **Analyse en composantes principales (ACP)** pour réduire la dimension et visualiser les données.
+3. **Classification ascendante hiérarchique (CAH)** pour regrouper les patients.
+4. **K-means** pour une autre approche de classification.
+
+### Étape 1 : Analyse exploratoire
+On commence par charger et explorer les données.
+
+```{r}
+# Charger les données
+donnees_medicales <- read.csv("medical.csv",header = TRUE, sep = ";",dec = ",")
+
+# Afficher un résumé des données
+summary(donnees_medicales)
+
+# Vérifier s'il y a des valeurs manquantes
+sum(is.na(donnees_medicales))
+
+# Afficher les premières lignes pour voir à quoi ça ressemble
+head(donnees_medicales)
+
+# Vérifier la structure des données (types de variables)
+str(donnees_medicales)
+```
+
+### Étape 2 : Analyse en Composantes Principales (ACP)
+
+Utilisons l'ACP pour réduire la dimension et visualiser les données sur un plan 2D tout en gardant l'essentiel de l'information.
+
+```{r}
+# S'assurer que toutes les colonnes sont numériques
+donnees_medicales_numeric <- data.frame(lapply(donnees_medicales, as.numeric))
+
+# Exécuter l'ACP
+acp_resultat <- prcomp(donnees_medicales_numeric, scale. = TRUE)
+
+# Résumé de l'ACP pour voir la proportion de variance expliquée par les composantes
+summary(acp_resultat)
+
+# Visualiser l'ACP (graphique des individus et des variables)
+library(ggplot2)
+biplot(acp_resultat, main = "ACP : Biplot des individus et des variables")
+```
+
+
+
+```{r}
+# Charger les librairies
+library(FactoMineR)
+library(factoextra)
+
+# Effectuer l'ACP (sur des données numériques standardisées)
+acp_fact <- PCA(donnees_medicales_numeric, scale.unit = TRUE, ncp = 5, graph = TRUE)
+
+# Afficher le résumé de l'ACP
+print(acp_fact)
+
+```
+
+```{r}
+# Afficher la proportion de variance expliquée par les composantes principales
+fviz_screeplot(acp_fact, addlabels = TRUE, ylim = c(0, 70),
+               title = "Pourcentage de variance expliquée par chaque composante")
+```
+
+
+
+```{r}
+# Cercle de corrélation pour voir quelles variables sont les plus importantes
+fviz_pca_var(acp_fact, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             title = "Cercle de corrélation des variables")
+
+# Tableau des contributions des variables aux 2 premières composantes
+print(acp_resultat$var$contrib[, 1:2])  # Contribution des variables aux axes 1 et 2
+
+```
+
+
+### Étape 3 : Classification Ascendante Hiérarchique (CAH)
+
+Utilisons la CAH pour regrouper les individus de manière hiérarchique, en créant un dendrogramme qui montre les similarités entre les individus.
+
+```{r}
+# Calculer la matrice de distances entre individus
+distances <- dist(donnees_medicales_numeric)
+
+# Appliquer la CAH
+cah_resultat <- hclust(distances, method = "ward.D2")
+
+# Visualiser le dendrogramme
+plot(cah_resultat, labels = FALSE, main = "CAH : Dendrogramme des individus")
+
+# Découper le dendrogramme en 3 clusters 
+clusters_cah <- cutree(cah_resultat, k = 4)
+
+# Ajouter ces clusters aux données
+donnees_medicales_numeric$cluster_cah <- as.factor(clusters_cah)
+head(donnees_medicales_numeric)
+
+```
+
+### Étape 4 : K-means
+
+Le K-means est une autre méthode pour regrouper les individus en fonction de leurs caractéristiques.
+
+```{r}
+
+# Appliquer l'algorithme K-means avec 3 clusters
+set.seed(123)  # Pour rendre les résultats reproductibles
+kmeans_resultat <- kmeans(donnees_medicales_numeric, centers = 3)
+
+# Ajouter les clusters K-means aux données
+donnees_medicales_numeric$cluster_kmeans <- as.factor(kmeans_resultat$cluster)
+
+# Visualiser les clusters obtenus avec K-means (projection sur les 2 premières dimensions ACP)
+ggplot(donnees_medicales_numeric, aes(x = acp_resultat$x[,1], y = acp_resultat$x[,2], color = cluster_kmeans)) +
+  geom_point() +
+  labs(title = "K-means : Visualisation des clusters") +
+  theme_minimal()
+```
+
+### Conclusion
+Grâce à l'ACP, nous avons réussi à réduire la dimension des données et à visualiser les individus et les variables de manière plus simple. La CAH et le K-means nous ont permis de regrouper les patients en fonction des 108 variables. Ces techniques nous offrent deux manières complémentaires de classer les individus.
+
+### Synthèse
+- **ACP** : a aidé à simplifier l'interprétation des variables en les projetant sur deux dimensions principales.
+- **CAH** : a permis de créer un dendrogramme des individus, révélant des groupes potentiels.
+- **K-means** : a proposé une méthode non hiérarchique de classification, avec des résultats visuels clairs sur les clusters.
+
+### Recommandation
+Nous recommandons d'utiliser la méthode K-means si l'on cherche des regroupements clairs et facilement visualisables. Cependant, si l'on souhaite une analyse plus détaillée des relations entre les individus, la CAH est plus adaptée. Une exploration plus approfondie des variables via une analyse en composantes principales peut aussi permettre d'identifier des patterns intéressants.
